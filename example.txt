@@ -1,5 +1,15 @@
 5
-1 G 3 R 5 R
-2 R 3 G 4 R
-5 G
+2 G
 5 R
+1 R
+5 R 1 R 4 G
+3 R
+5 R
+3 R 5 R 1 R
+3 R
+2 G
+5 R 1 R
+2 G
+5 R
+4 G
+5 R 4 G

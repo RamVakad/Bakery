@@ -29,7 +29,7 @@ public class Order {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for(Cookie c : cookies) {
-            sb.append("1x SHAPE" + c.getShape() + ":" + CookieType.getStringType(c.getType()) + "; \t");
+            sb.append("SHAPE" + c.getShape() + ":" + CookieType.getStringType(c.getType()) + "; \t");
         }
         return sb.toString();
     }

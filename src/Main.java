@@ -73,7 +73,7 @@ public class Main {
                 k += 2;
             }
             if (order.isValid()) {
-                System.out.println("Valid Order: " + order.toString());
+                System.out.println("Valid Order: " + lines.get(i));
                 orders.add(order);
             } else {
                 System.out.println("Invalid order: " + order.toString());

@@ -1,17 +1,24 @@
 import java.util.List;
 
-
-//Only 1 batch per shape, either regular or gluten free
-//Each order must get at least one preferred shape + type
-//As less Gluten Free batches as possible.
 public class Bakery {
 
-    private Integer numOfShapes;
-    private List<Order> orders;
-    private CookieType[] bakeConfiguration;
+    private Integer numOfShapes; //Number of different shapes
+    private List<Order> orders; //The list of orders from customers, each order has an array of cookies they like.
+    private CookieType[] bakeConfiguration; //The best possible baking configuration.
+    private Integer numOfGlutenFreeBatches; //The number of gluten free batches in the bake configuration.
+
     private boolean[] configLocks;
-    private Integer numOfGlutenFreeBatches;
+    //Used to lock baking configurations for specific shapes
+    //Based on customers with only one preference.
+    //configLocks[4] = true for the initial example because of the third customer
+    //It will prevent iterations on that configuration, therefore reducing the runtime
+    //of the brute forcer substantially.
+
     private Integer bestedComp = 0;
+    //The minimum number of gluten free batches that the bake configuration will need.
+    //bestedComp = 1 for the initial example because of the fifth costumer.
+    //If the brute forcer encounters a baking configuration that matches bestedComp, it will
+    //immediately stop because that is the cheapest configuration.
 
 
     public Bakery(Integer numOfShapes) {
@@ -23,8 +30,11 @@ public class Bakery {
     }
 
 
+    //Only 1 batch per shape, either regular or gluten free
+    //Each order must get at least one preferred shape + type
+    //As less Gluten Free batches as possible.
     public void bakeOrders(List<Order> orders) {
-        System.out.println("Attempting to bake orders ... ");
+        System.out.println("Finding best baking configuration ... ");
 
         //Check for costumers that are ordering only 1 cookie, and lock that preference.
         for(int i = 0; i < orders.size(); i++) {
@@ -32,6 +42,8 @@ public class Bakery {
             if (o.getCookies().size() == 1) {
                 Cookie c = o.getCookies().get(0);
 
+                //Before locking preference, check if a lock already exists on that shape and check if it's the same
+                //If it's a conflict, no valid baking configuration exists.
                 if (this.configLocks[c.getShape() - 1]) {
                     System.out.println("Config lock for Shape " + c.getShape() + " exists: " + CookieType.getStringType(this.bakeConfiguration[c.getShape() - 1]));
                     if(this.bakeConfiguration[c.getShape() - 1] != c.getType()) {
@@ -43,49 +55,31 @@ public class Bakery {
 
                 this.bakeConfiguration[c.getShape() - 1] = c.getType();
                 this.configLocks[c.getShape() - 1] = true;
-                orders.remove(i);
-                i--;
-                this.updateBestedComp();
+                orders.remove(i); //Remove this order from the list because the brute forcer doesn't need to iterate it
+                i--;//Decrement because of removal.
+                this.updateBestedComp(); //Update the minimum number of gluten free batches.
             }
         }
 
-        bruteForce(orders);
-    }
-
-    public void updateBestedComp() {
-        int bestComp = 0;
-        for(int i = 0; i < this.configLocks.length; i++) {
-            if (this.configLocks[i] == true) {
-                if (this.bakeConfiguration[i] == CookieType.GLUTEN_FREE) {
-                    bestComp++;
-                }
-            }
-        }
-        this.bestedComp = bestComp;
-    }
-
-
-    //Brute force every single batch combination and keep track of the best.
-    public void bruteForce(List<Order> orders) {
+        this.orders = orders;
         CookieType[] batches = new CookieType[this.numOfShapes];
         System.arraycopy(this.bakeConfiguration, 0, batches, 0, this.numOfShapes);
-        this.orders = orders;
         this.bruteForce(batches, 0);
         if (this.numOfGlutenFreeBatches == -1) {
             System.out.println("No valid bake configuration found to make all customers happy.");
         } else {
             System.out.println("Cheapest bake configuration that will make all customers happy: ");
             printConfiguration(this.bakeConfiguration);
-
         }
-
     }
 
     //Just like generating all possible binary strings with N bits
     //'0' being equivalent to regular and '1' being equivalent to gluten free.
+    //Accounts for the baking configuration locks set out in configLocks[] to significantly
+    //reduce runtime.
     public boolean bruteForce(CookieType[] config, int i) {
         if (i == numOfShapes) {
-            printConfiguration(config);
+            System.out.print("Iterating Configuration: "); printConfiguration(config);
             boolean everyoneHappy = true; //Assume that every costumer is happy with the bake config at first.
             for(Order o : this.orders) { //Now test each order.
                 boolean happy = false; //Assume that this customer is unhappy to begin with.
@@ -114,9 +108,9 @@ public class Bakery {
 
         if (!configLocks[i]) {
             config[i] = CookieType.REGULAR;
-            if (bruteForce(config, i + 1)) return true; //Best config with 0 gluten free has been found so brute forcing can be stopped.
+            if (bruteForce(config, i + 1)) return true; //Best config with glutenFree = bestedComp has been found so brute forcing can be stopped.
             config[i] = CookieType.GLUTEN_FREE;
-            if (bruteForce(config, i + 1)) return true; //Best config with 0 gluten free has been found so brute forcing can be stopped.
+            if (bruteForce(config, i + 1)) return true;
         } else {
             if (bruteForce(config, i + 1)) return true;
         }
@@ -124,6 +118,21 @@ public class Bakery {
         return false;
     }
 
+    //Calculates and updates the minimum number of gluten free batches required for the best bake configuration.
+    //Bruteforcer stops the moment it finds a baking configuration that matches bestedComp.
+    public void updateBestedComp() {
+        int bestComp = 0;
+        for(int i = 0; i < this.configLocks.length; i++) {
+            if (this.configLocks[i]) {
+                if (this.bakeConfiguration[i] == CookieType.GLUTEN_FREE) {
+                    bestComp++;
+                }
+            }
+        }
+        this.bestedComp = bestComp;
+    }
+
+    //Calculates the number of gluten free batches in the given bake configuration.
     public int getNumOfGlutenFree(CookieType[] bakeConfig) {
         int glutenFree = 0;
         for(int i = 0; i < bakeConfig.length; i++) {
@@ -132,6 +141,7 @@ public class Bakery {
         return glutenFree;
     }
 
+    //Print the baking configuration.
     public void printConfiguration(CookieType[] config) {
         for(CookieType type : config) {
             System.out.print(CookieType.getStringType(type) + "\t");
