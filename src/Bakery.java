@@ -20,7 +20,6 @@ public class Bakery {
     //As less Gluten Free batches as possible.
     public void bakeOrders(List<Order> orders) {
         System.out.println("Attempting to bake orders ... ");
-
         bruteForce(orders);
     }
 
@@ -41,7 +40,7 @@ public class Bakery {
 
     //Just like generating all possible binary strings with N bits
     //'0' being equivalent to regular and '1' being equivalent to gluten free.
-    public void bruteForce(CookieType[] config, int i) {
+    public boolean bruteForce(CookieType[] config, int i) {
         if (i == numOfShapes) {
             boolean everyoneHappy = true; //Assume that every costumer is happy with the bake config at first.
             for(Order o : this.orders) { //Now test each order.
@@ -63,16 +62,22 @@ public class Bakery {
                 if (this.numOfGlutenFreeBatches == -1 || newGlutenFree < this.numOfGlutenFreeBatches) {
                     System.arraycopy(config, 0, this.bakeConfiguration, 0, this.bakeConfiguration.length);
                     this.numOfGlutenFreeBatches = newGlutenFree;
+                    if (this.numOfGlutenFreeBatches == 0) return true;
                 }
             }
-            return;
+            return false;
         }
 
         config[i] = CookieType.REGULAR;
-        bruteForce(config, i + 1);
+        boolean bested = bruteForce(config, i + 1);
+        if (bested) {
+            return true; //Best config with 0 gluten free has been found so brute forcing can be stopped.
+        }
 
         config[i] = CookieType.GLUTEN_FREE;
         bruteForce(config, i + 1);
+
+        return false;
     }
 
     public int getNumOfGlutenFree(CookieType[] bakeConfig) {
