@@ -1,32 +1,74 @@
 import java.util.List;
 
+
+//Only 1 batch per shape, either regular or gluten free
+//Each order must get at least one preferred shape + type
+//As less Gluten Free batches as possible.
 public class Bakery {
 
     private Integer numOfShapes;
     private List<Order> orders;
     private CookieType[] bakeConfiguration;
+    private boolean[] configLocks;
     private Integer numOfGlutenFreeBatches;
+    private Integer bestedComp = 0;
 
 
     public Bakery(Integer numOfShapes) {
         this.numOfShapes = numOfShapes;
         this.bakeConfiguration = new CookieType[numOfShapes];
+        this.configLocks = new boolean[numOfShapes];
         this.numOfGlutenFreeBatches = -1;
         System.out.println("New instance of bakery created with " + this.numOfShapes + " different shapes.");
     }
 
-    //Only 1 batch per shape, either regular or gluten free
-    //Each order must get at least one preferred shape + type
-    //As less Gluten Free batches as possible.
+
     public void bakeOrders(List<Order> orders) {
         System.out.println("Attempting to bake orders ... ");
+
+        //Check for costumers that are ordering only 1 cookie, and lock that preference.
+        for(int i = 0; i < orders.size(); i++) {
+            Order o = orders.get(i);
+            if (o.getCookies().size() == 1) {
+                Cookie c = o.getCookies().get(0);
+
+                if (this.configLocks[c.getShape() - 1]) {
+                    System.out.println("Config lock for Shape " + c.getShape() + " exists: " + CookieType.getStringType(this.bakeConfiguration[c.getShape() - 1]));
+                    if(this.bakeConfiguration[c.getShape() - 1] != c.getType()) {
+                        System.out.println("Config lock conflict with: " + CookieType.getStringType(c.getType()) + ". No solution exists.");
+                        System.out.println("Exiting.");
+                        return;
+                    }
+                }
+
+                this.bakeConfiguration[c.getShape() - 1] = c.getType();
+                this.configLocks[c.getShape() - 1] = true;
+                orders.remove(i);
+                i--;
+                this.updateBestedComp();
+            }
+        }
+
         bruteForce(orders);
+    }
+
+    public void updateBestedComp() {
+        int bestComp = 0;
+        for(int i = 0; i < this.configLocks.length; i++) {
+            if (this.configLocks[i] == true) {
+                if (this.bakeConfiguration[i] == CookieType.GLUTEN_FREE) {
+                    bestComp++;
+                }
+            }
+        }
+        this.bestedComp = bestComp;
     }
 
 
     //Brute force every single batch combination and keep track of the best.
     public void bruteForce(List<Order> orders) {
-        CookieType[] batches = new CookieType[numOfShapes];
+        CookieType[] batches = new CookieType[this.numOfShapes];
+        System.arraycopy(this.bakeConfiguration, 0, batches, 0, this.numOfShapes);
         this.orders = orders;
         this.bruteForce(batches, 0);
         if (this.numOfGlutenFreeBatches == -1) {
@@ -34,6 +76,7 @@ public class Bakery {
         } else {
             System.out.println("Cheapest bake configuration that will make all customers happy: ");
             printConfiguration(this.bakeConfiguration);
+
         }
 
     }
@@ -42,6 +85,7 @@ public class Bakery {
     //'0' being equivalent to regular and '1' being equivalent to gluten free.
     public boolean bruteForce(CookieType[] config, int i) {
         if (i == numOfShapes) {
+            printConfiguration(config);
             boolean everyoneHappy = true; //Assume that every costumer is happy with the bake config at first.
             for(Order o : this.orders) { //Now test each order.
                 boolean happy = false; //Assume that this customer is unhappy to begin with.
@@ -62,20 +106,20 @@ public class Bakery {
                 if (this.numOfGlutenFreeBatches == -1 || newGlutenFree < this.numOfGlutenFreeBatches) {
                     System.arraycopy(config, 0, this.bakeConfiguration, 0, this.bakeConfiguration.length);
                     this.numOfGlutenFreeBatches = newGlutenFree;
-                    if (this.numOfGlutenFreeBatches == 0) return true;
+                    if (this.numOfGlutenFreeBatches.equals(bestedComp)) return true;
                 }
             }
             return false;
         }
 
-        config[i] = CookieType.REGULAR;
-        boolean bested = bruteForce(config, i + 1);
-        if (bested) {
-            return true; //Best config with 0 gluten free has been found so brute forcing can be stopped.
+        if (!configLocks[i]) {
+            config[i] = CookieType.REGULAR;
+            if (bruteForce(config, i + 1)) return true; //Best config with 0 gluten free has been found so brute forcing can be stopped.
+            config[i] = CookieType.GLUTEN_FREE;
+            if (bruteForce(config, i + 1)) return true; //Best config with 0 gluten free has been found so brute forcing can be stopped.
+        } else {
+            if (bruteForce(config, i + 1)) return true;
         }
-
-        config[i] = CookieType.GLUTEN_FREE;
-        bruteForce(config, i + 1);
 
         return false;
     }
